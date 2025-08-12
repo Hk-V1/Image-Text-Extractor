@@ -1,15 +1,14 @@
 # Core Dependencies
 streamlit>=1.28.0
 python-doctr[torch]>=0.7.0
-opencv-python>=4.8.0
+opencv-python-headless>=4.8.0
 numpy>=1.24.0
 pillow>=10.0.0
 pandas>=2.0.0
 
-# OCR and Image Processing
+# OCR and Image Processing  
 torch>=2.0.0
 torchvision>=0.15.0
-opencv-contrib-python>=4.8.0
 
 # Document Processing
 pdf2image>=1.16.0
@@ -26,3 +25,11 @@ scikit-image>=0.21.0
 # Development and Debugging (optional)
 matplotlib>=3.7.0
 seaborn>=0.12.0
+
+# System Requirements Note:
+# For Windows users, you might need to install poppler-utils for PDF support:
+# conda install -c conda-forge poppler
+# 
+# For Linux/Mac users:
+# sudo apt-get install poppler-utils (Ubuntu/Debian)
+# brew install poppler (Mac with Homebrew)
