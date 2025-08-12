@@ -1,0 +1,28 @@
+# Core Dependencies
+streamlit>=1.28.0
+python-doctr[torch]>=0.7.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+pillow>=10.0.0
+pandas>=2.0.0
+
+# OCR and Image Processing
+torch>=2.0.0
+torchvision>=0.15.0
+opencv-contrib-python>=4.8.0
+
+# Document Processing
+pdf2image>=1.16.0
+pytesseract>=0.3.10
+
+# Data Handling
+regex>=2023.8.8
+python-dateutil>=2.8.2
+
+# Optional: For better performance
+scipy>=1.11.0
+scikit-image>=0.21.0
+
+# Development and Debugging (optional)
+matplotlib>=3.7.0
+seaborn>=0.12.0
