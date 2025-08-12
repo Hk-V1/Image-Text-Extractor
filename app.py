@@ -5,8 +5,16 @@ try:
 except ImportError:
     st.error("OpenCV not available. Some preprocessing features may be limited.")
     cv2 = None
-from doctr.io import DocumentFile
-from doctr.models import ocr_predictor
+
+# Add error handling for doctr imports
+try:
+    from doctr.io import DocumentFile
+    from doctr.models import ocr_predictor
+    DOCTR_AVAILABLE = True
+except ImportError:
+    st.error("DocTR not available. Please install doctr: pip install python-doctr[torch]")
+    DOCTR_AVAILABLE = False
+
 import re
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
@@ -21,9 +29,18 @@ class EnhancedVehicleDocumentExtractor:
         """
         Enhanced OCR extractor for both simple and complex weighbridge documents
         """
+        if not DOCTR_AVAILABLE:
+            st.error("Cannot initialize extractor: DocTR is not available")
+            return
+            
         if 'ocr_model' not in st.session_state:
             with st.spinner('Loading OCR model... This may take a moment.'):
-                st.session_state.ocr_model = ocr_predictor(pretrained=True)
+                try:
+                    st.session_state.ocr_model = ocr_predictor(pretrained=True)
+                    st.success("OCR model loaded successfully!")
+                except Exception as e:
+                    st.error(f"Failed to load OCR model: {e}")
+                    return
         self.model = st.session_state.ocr_model
         
         # Enhanced patterns for various document types
@@ -87,82 +104,6 @@ class EnhancedVehicleDocumentExtractor:
                 r'(\d{2}-\d{2}-\d{4})',
                 # From header/footer timestamps
                 r'([A-Z-]+\d+)\s*\(\s*(\d{1,2}-\d{1,2}-\d{4})',
-            ],
-            'cid_no': [
-                # Enhanced customer/reference patterns
-                r'ticket\s+no\.?\s*:?\s*([A-Z0-9-]+)',
-                r'slip\s+no\.?\s*:?\s*([A-Z0-9-]+)', 
-                r'challan\s+no\.?\s*:?\s*([A-Z0-9-]+)',
-                r'cid\s+no\.?\s*:?\s*([A-Z0-9]+)',
-                r'c\.?i\.?d\.?\s+no\.?\s*:?\s*([A-Z0-9]+)',
-                r'customer\s+id\s*:?\s*([A-Z0-9]+)',
-                r'reference\s*:?\s*([A-Z0-9-]+)',
-                r'ref\.?\s*:?\s*([A-Z0-9-]+)',
-                r'token\s+no\.?\s*:?\s*([A-Z0-9]+)',
-                r'weighbridge\s+no\.?\s*:?\s*([A-Z0-9-]+)',
-                # From structured documents (000475, 0000348 patterns)
-                r'(\d{6})',  # 6-digit reference codes
-                r'(\d{7})',  # 7-digit reference codes  
-                # Location-based IDs (PHALTAN-2)
-                r'([A-Z]+-\d+)',
-                # Serial/ID patterns
-                r'SL\s+NO\.?\s*:?\s*(\d+)',
-                # From samples
-                r'(000475|0000348)',  # Specific IDs from samples
-            ],
-            'lot_no': [
-                # Batch/lot patterns
-                r'lot\s+no\.?\s*:?\s*([A-Z0-9]+)',
-                r'batch\s+no\.?\s*:?\s*([A-Z0-9]+)',
-                r'lot\s*:?\s*([A-Z0-9]+)',
-                r'batch\s*:?\s*([A-Z0-9]+)',
-                r'slip\s+no\.?\s*:?\s*([A-Z0-9-]+)',
-                r'token\s+no\.?\s*:?\s*([A-Z0-9]+)',
-                r'([A-Z0-9]{6,})',
-                # Serial numbers from tabular data
-                r'sr\.?\s*no\.?\s*(\d+)',
-                r'serial\s+no\.?\s*(\d+)',
-            ],
-            'quantity': [
-                # Enhanced quantity patterns for different document types
-                r'no\s+of\s+trips\s*:?\s*(\d+)',
-                r'total\s+trips\s*:?\s*(\d+)',
-                # Gross and Tare weights (from weighbridge certificates)
-                r'gross\s+weight\s*:?\s*(\d+(?:\.\d+)?)\s*(kg|kgs?)',
-                r'tare\s+weight\s*:?\s*(\d+(?:\.\d+)?)\s*(kg|kgs?)',
-                # General quantity patterns
-                r'quantity\s*:?\s*(\d+(?:\.\d+)?)\s*(kg|kgs?|ton|tonnes?|mt|nos?|pcs?|pieces?)?',
-                r'qty\.?\s*:?\s*(\d+(?:\.\d+)?)\s*(kg|kgs?|ton|tonnes?|mt|nos?|pcs?|pieces?)?',
-                r'qnty\.?\s*:?\s*(\d+(?:\.\d+)?)\s*(kg|kgs?|ton|tonnes?|mt|nos?|pcs?|pieces?)?',
-                # From structured documents
-                r'GROSS\s+WEIGHT\s+(\d+)\s*(kg|Kg)',
-                r'TARE\s+WEIGHT\s+(\d+)\s*(kg|Kg)',
-                # Average weight patterns
-                r'average\s+weight\s*:?\s*(\d+(?:\.\d+)?)\s*(kg|kgs?)',
-                # From summary sections
-                r'(\d{1,5}(?:\.\d{1,3})?)\s*kg'
-            ],
-            'location': [
-                # Location patterns for different document types
-                r'([A-Z]+-\d+)',  # PHALTAN-2
-                r'lat[-:\s]*(-?\d+\.\d+)',  # Latitude
-                r'long[-:\s]*(-?\d+\.\d+)', # Longitude
-                r'location\s*:?\s*([A-Z\s-]+)',
-                r'place\s*:?\s*([A-Z\s-]+)',
-                r'depot\s*:?\s*([A-Z\s-]+)',
-                # From weighbridge headers
-                r'([A-Z]+\s+WEIGH\s+BRIDGE)',  # Like "FARAZ WEIGH BRIDGE"
-                r'Post\s+([A-Z\s,.-]+)',  # Post location info
-                # Specific locations from samples
-                r'(Kanergaon|Post\s+Mandvi|Taluka|Vasai|Virar|Palghar)',
-                r'(Chennai|Chengalpattu)',  # From first sample
-            ],
-            'timestamp': [
-                # Timestamp patterns
-                r'(\d{1,2}-\d{1,2}-\d{4}\s+\d{1,2}:\d{2}:\d{2})',
-                r'(\d{4}-\d{1,2}-\d{1,2}\s+\d{1,2}:\d{2}:\d{2})',
-                r'(\d{1,2}/\d{1,2}/\d{4}\s+\d{1,2}:\d{2}:\d{2})',
-                r'time\s*:?\s*(\d{1,2}:\d{2}:\d{2})',
             ]
         }
     
@@ -253,43 +194,6 @@ class EnhancedVehicleDocumentExtractor:
             'tabular': tabular_data
         }
     
-    def extract_tabular_data(self, tabular_info: List[Dict]) -> Dict[str, List]:
-        """
-        Extract structured data from tabular format documents
-        """
-        table_data = {
-            'serial_nos': [],
-            'weights': [],
-            'dates': [],
-            'references': []
-        }
-        
-        for line_info in tabular_info:
-            line_text = line_info['line_text']
-            words = [w['text'] for w in line_info['words']]
-            
-            # Extract serial numbers (first column usually)
-            serial_match = re.search(r'^(\d{1,3})', line_text)
-            if serial_match:
-                table_data['serial_nos'].append(serial_match.group(1))
-            
-            # Extract weights (decimal numbers)
-            weight_matches = re.findall(r'(\d{1,3}\.\d{2,3})', line_text)
-            if weight_matches:
-                table_data['weights'].extend(weight_matches)
-            
-            # Extract dates from line
-            date_matches = re.findall(r'(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})', line_text)
-            if date_matches:
-                table_data['dates'].extend(date_matches)
-            
-            # Extract reference codes
-            ref_matches = re.findall(r'([A-Z0-9]{4,})', line_text)
-            if ref_matches:
-                table_data['references'].extend(ref_matches)
-        
-        return table_data
-    
     def extract_field_with_patterns(self, text: str, field_name: str, tabular_data: Dict = None) -> Optional[str]:
         """
         Enhanced field extraction with tabular data support
@@ -310,162 +214,11 @@ class EnhancedVehicleDocumentExtractor:
                     match = match[0] if match[0] else match[1] if len(match) > 1 else ''
                 if match and len(match.strip()) > 0:
                     candidates.append(match.strip())
-            
-            for line in text_lines:
-                line_matches = re.findall(pattern, line, re.IGNORECASE)
-                for match in line_matches:
-                    if isinstance(match, tuple):
-                        match = match[0] if match[0] else match[1] if len(match) > 1 else ''
-                    if match and len(match.strip()) > 0:
-                        candidates.append(match.strip())
-        
-        # Use tabular data for specific fields
-        if tabular_data and field_name == 'net_weight':
-            if tabular_data.get('weights'):
-                # Calculate total or average from tabular weights
-                weights = [float(w) for w in tabular_data['weights'] if w.replace('.', '').isdigit()]
-                if weights:
-                    total_weight = sum(weights)
-                    avg_weight = total_weight / len(weights)
-                    candidates.extend([f"{total_weight:.3f}", f"{avg_weight:.3f}"])
         
         if not candidates:
             return None
         
-        # Post-process candidates based on field type
-        return self._post_process_candidate(field_name, candidates)
-    
-    def _post_process_candidate(self, field_name: str, candidates: List[str]) -> str:
-        """
-        Post-process extraction candidates
-        """
-        if field_name == 'vehicle_no':
-            for candidate in candidates:
-                clean_candidate = re.sub(r'\s+', '', candidate.upper())
-                if re.match(r'[A-Z]{2}\d{2}[A-Z]{1,2}\d{3,4}', clean_candidate):
-                    return clean_candidate
-            return candidates[0].upper().replace(' ', '') if candidates else None
-        
-        elif field_name == 'net_weight':
-            # Prefer larger, more realistic weights
-            weight_candidates = []
-            for candidate in candidates:
-                weight_match = re.search(r'(\d+(?:\.\d+)?)', candidate)
-                if weight_match:
-                    weight_val = float(weight_match.group(1))
-                    if weight_val > 0.1:  # Reasonable weight threshold
-                        weight_candidates.append((weight_val, candidate))
-            
-            if weight_candidates:
-                weight_candidates.sort(key=lambda x: x[0], reverse=True)
-                return weight_candidates[0][1]
-            return candidates[0] if candidates else None
-        
-        elif field_name == 'date':
-            for candidate in candidates:
-                if re.search(r'\d{4}', candidate):  # Has year
-                    return candidate
-            return candidates[0] if candidates else None
-        
-        elif field_name in ['cid_no', 'lot_no']:
-            # Prefer alphanumeric IDs with reasonable length
-            for candidate in candidates:
-                if len(candidate) >= 3 and re.match(r'[A-Z0-9-]+', candidate.upper()):
-                    return candidate.upper()
-            return candidates[0].upper() if candidates else None
-        
-        elif field_name == 'location':
-            # Prefer location codes like PHALTAN-2
-            for candidate in candidates:
-                if re.match(r'[A-Z]+-\d+', candidate.upper()):
-                    return candidate.upper()
-            return candidates[0].upper() if candidates else None
-        
         return candidates[0] if candidates else None
-    
-    def extract_summary_info(self, text: str) -> Dict[str, str]:
-        """
-        Extract summary information from complex documents
-        """
-        summary = {}
-        
-        # Total net weight
-        total_weight_match = re.search(r'total\s+net\s+weight\s*:?\s*(\d+(?:\.\d+)?)', text, re.IGNORECASE)
-        if total_weight_match:
-            summary['total_net_weight'] = total_weight_match.group(1)
-        
-        # Number of trips
-        trips_match = re.search(r'no\s+of\s+trips\s*:?\s*(\d+)', text, re.IGNORECASE)
-        if trips_match:
-            summary['total_trips'] = trips_match.group(1)
-        
-        # Average weight
-        avg_weight_match = re.search(r'average\s+.*?weight\s*:?\s*(\d+(?:\.\d+)?)', text, re.IGNORECASE)
-        if avg_weight_match:
-            summary['average_weight'] = avg_weight_match.group(1)
-        
-        # GPS coordinates
-        lat_match = re.search(r'lat[-:\s]*(-?\d+\.\d+)', text, re.IGNORECASE)
-        if lat_match:
-            summary['latitude'] = lat_match.group(1)
-        
-        long_match = re.search(r'long[-:\s]*(-?\d+\.\d+)', text, re.IGNORECASE)
-        if long_match:
-            summary['longitude'] = long_match.group(1)
-        
-        return summary
-    
-    def post_process_fields(self, extracted_data: Dict[str, str]) -> Dict[str, str]:
-        """
-        Enhanced post-processing for all document types
-        """
-        processed_data = {}
-        
-        for field, value in extracted_data.items():
-            if value is None:
-                processed_data[field] = None
-                continue
-                
-            if field == 'vehicle_no':
-                clean_value = re.sub(r'[^A-Z0-9]', '', value.upper())
-                processed_data[field] = clean_value
-                
-            elif field == 'date':
-                try:
-                    value = value.replace('/', '-')
-                    date_patterns = [
-                        '%d-%m-%Y', '%d-%m-%y', '%d-%b-%Y', '%d-%B-%Y',
-                        '%m-%d-%Y', '%Y-%m-%d', '%d %b %Y', '%d %B %Y'
-                    ]
-                    
-                    for pattern in date_patterns:
-                        try:
-                            parsed_date = datetime.strptime(value, pattern)
-                            processed_data[field] = parsed_date.strftime('%d/%m/%Y')
-                            break
-                        except ValueError:
-                            continue
-                    else:
-                        processed_data[field] = value
-                except:
-                    processed_data[field] = value
-                    
-            elif field in ['net_weight', 'quantity', 'total_net_weight', 'average_weight']:
-                match = re.search(r'(\d+(?:\.\d+)?)\s*(.*)', str(value))
-                if match:
-                    number = match.group(1)
-                    unit = match.group(2).strip() or 'kg'
-                    processed_data[field] = f"{number} {unit}"
-                else:
-                    processed_data[field] = str(value)
-                    
-            elif field in ['cid_no', 'lot_no', 'location']:
-                processed_data[field] = str(value).strip().upper()
-                
-            else:
-                processed_data[field] = str(value).strip()
-        
-        return processed_data
     
     def extract_from_image(self, image_path: str, preprocess: bool = True) -> Dict[str, str]:
         """
@@ -475,89 +228,31 @@ class EnhancedVehicleDocumentExtractor:
             # Extract text using docTR
             extracted_text, doctr_result = self.extract_text_with_doctr(image_path)
             
-            # Extract tabular data if present
-            tabular_data = None
-            if doctr_result.get('tabular'):
-                tabular_data = self.extract_tabular_data(doctr_result['tabular'])
-            
             # Extract each field
             extracted_data = {}
-            field_names = ['vehicle_no', 'net_weight', 'date', 'cid_no', 'lot_no', 'quantity', 'location', 'timestamp']
+            field_names = ['vehicle_no', 'net_weight', 'date']
             
             for field_name in field_names:
                 extracted_data[field_name] = self.extract_field_with_patterns(
-                    extracted_text, field_name, tabular_data
+                    extracted_text, field_name
                 )
             
-            # Extract summary information for complex documents
-            summary_info = self.extract_summary_info(extracted_text)
-            extracted_data.update(summary_info)
-            
-            # Post-process the extracted fields
-            processed_data = self.post_process_fields(extracted_data)
-            
             # Add debugging information
-            processed_data['raw_text'] = extracted_text
-            processed_data['tabular_rows'] = len(doctr_result.get('tabular', []))
-            processed_data['extraction_confidence'] = self.calculate_confidence(processed_data)
-            processed_data['document_type'] = self.detect_document_type(extracted_text, doctr_result)
+            extracted_data['raw_text'] = extracted_text[:500] + "..." if len(extracted_text) > 500 else extracted_text
+            extracted_data['tabular_rows'] = len(doctr_result.get('tabular', []))
             
-            return processed_data
+            return extracted_data
             
         except Exception as e:
+            st.error(f"Extraction error: {str(e)}")
             return {
                 'error': str(e),
-                'vehicle_no': None, 'net_weight': None, 'date': None,
-                'cid_no': None, 'lot_no': None, 'quantity': None,
-                'location': None, 'timestamp': None,
-                'raw_text': None, 'extraction_confidence': 0,
-                'document_type': 'unknown'
+                'vehicle_no': None, 
+                'net_weight': None, 
+                'date': None,
+                'raw_text': None, 
+                'tabular_rows': 0
             }
-    
-    def detect_document_type(self, text: str, doctr_result: Dict) -> str:
-        """
-        Detect the type of weighbridge document with improved accuracy
-        """
-        tabular_rows = len(doctr_result.get('tabular', []))
-        text_lower = text.lower()
-        
-        # Check for structured modern weighbridge slip
-        if re.search(r'ticket\s+no|vehicle\s+details|vehicle\s+overview', text_lower):
-            return "Modern Digital Weighbridge Slip"
-        
-        # Check for traditional weighbridge certificate  
-        elif re.search(r'weigh\s+bridge.*certificate|faraz\s+weigh\s+bridge', text_lower):
-            return "Traditional Weighbridge Certificate"
-        
-        # Check for complex tabular documents
-        elif tabular_rows > 10:
-            return "Complex Tabular Weighbridge Slip"
-        
-        # Check for summary documents
-        elif re.search(r'total\s+net\s+weight|no\s+of\s+trips', text_lower):
-            return "Summary Weighbridge Document"
-        
-        # Check for basic weighbridge slip
-        elif re.search(r'weighbridge|weight.*kg|net.*weight', text_lower):
-            return "Simple Weighbridge Slip"
-        
-        else:
-            return "Generic Vehicle Document"
-    
-    def calculate_confidence(self, data: Dict[str, str]) -> float:
-        """
-        Calculate extraction confidence with enhanced scoring
-        """
-        core_fields = ['vehicle_no', 'net_weight', 'date', 'cid_no', 'lot_no', 'quantity']
-        additional_fields = ['location', 'timestamp', 'total_net_weight', 'total_trips']
-        
-        core_score = sum(2 for field in core_fields if data.get(field) is not None)
-        additional_score = sum(1 for field in additional_fields if data.get(field) is not None)
-        
-        total_possible = len(core_fields) * 2 + len(additional_fields)
-        total_achieved = core_score + additional_score
-        
-        return round((total_achieved / total_possible) * 100, 1)
 
 def main():
     st.set_page_config(
@@ -568,12 +263,16 @@ def main():
     
     st.title("⚖️ Enhanced Vehicle Weighbridge Document OCR Extractor")
     st.markdown("Upload weighbridge/vehicle documents to extract key information using AI-powered OCR")
-    st.markdown("🚀 **Now supports both simple slips AND complex tabular weighbridge documents!**")
+    
+    # Check if dependencies are available
+    if not DOCTR_AVAILABLE:
+        st.error("❌ DocTR is not installed. Please install it using:")
+        st.code("pip install python-doctr[torch]")
+        st.stop()
     
     # Sidebar for settings
     st.sidebar.header("⚙️ Settings")
-    preprocess_image = st.sidebar.checkbox("Apply Image Preprocessing", value=True, 
-                                         help="Enhances image quality for better OCR results")
+    preprocess_image = st.sidebar.checkbox("Apply Image Preprocessing", value=True)
     
     st.sidebar.markdown("### 📋 Extracted Fields:")
     st.sidebar.markdown("""
@@ -581,29 +280,23 @@ def main():
     - 🚗 Vehicle No: Registration number
     - ⚖️ Net Weight: Weight in kg
     - 📅 Date: Document date  
-    - 🆔 CID No: Customer/Reference ID
-    - 📦 Lot No: Lot/Batch number
-    - 📊 Quantity: Additional weight info
-    
-    **Additional Fields:**
-    - 📍 Location: Weighbridge location
-    - 🕐 Timestamp: Date/time stamp
-    - 📈 Summary: Total weights, trips, averages
     """)
     
-    # Initialize extractor
-    @st.cache_resource
-    def load_extractor():
-        return EnhancedVehicleDocumentExtractor()
-    
-    extractor = load_extractor()
+    # Initialize extractor with error handling
+    try:
+        if 'extractor' not in st.session_state:
+            st.session_state.extractor = EnhancedVehicleDocumentExtractor()
+        extractor = st.session_state.extractor
+    except Exception as e:
+        st.error(f"Failed to initialize extractor: {e}")
+        st.stop()
     
     # File uploader
     uploaded_files = st.file_uploader(
         "📁 Choose weighbridge document images",
         type=['png', 'jpg', 'jpeg', 'tiff', 'bmp'],
         accept_multiple_files=True,
-        help="Upload clear images of weighbridge slips, tabular documents, or vehicle documents"
+        help="Upload clear images of weighbridge slips"
     )
     
     if uploaded_files:
@@ -614,52 +307,52 @@ def main():
             
             with col1:
                 st.subheader("🖼️ Original Image")
-                image = Image.open(uploaded_file)
-                st.image(image, use_column_width=True)
-                st.caption(f"Size: {image.size[0]}x{image.size[1]} pixels")
+                try:
+                    image = Image.open(uploaded_file)
+                    st.image(image, use_column_width=True)
+                    st.caption(f"Size: {image.size[0]}x{image.size[1]} pixels")
+                except Exception as e:
+                    st.error(f"Error loading image: {e}")
+                    continue
             
             with col2:
                 st.subheader("🔍 Extracted Information")
                 
                 # Save uploaded file temporarily
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
-                    image.save(tmp_file.name)
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
+                        image.save(tmp_file.name)
+                        
+                        # Process with OCR
+                        with st.spinner('🤖 Analyzing document with Enhanced AI OCR...'):
+                            result = extractor.extract_from_image(tmp_file.name, preprocess_image)
+                        
+                        os.unlink(tmp_file.name)
                     
-                    # Process with OCR
-                    with st.spinner('🤖 Analyzing document with Enhanced AI OCR...'):
-                        result = extractor.extract_from_image(tmp_file.name, preprocess_image)
-                    
-                    os.unlink(tmp_file.name)
-                
-                # Display results
-                if result.get('error'):
-                    st.error(f"❌ Error: {result['error']}")
-                else:
-                    # Document type and confidence
-                    doc_type = result.get('document_type', 'Unknown')
-                    confidence = result.get('extraction_confidence', 0)
-                    tabular_rows = result.get('tabular_rows', 0)
-                    
-                    st.info(f"📋 **Document Type:** {doc_type}")
-                    if tabular_rows > 0:
-                        st.info(f"📊 **Tabular Rows Detected:** {tabular_rows}")
-                    
-                    if confidence >= 80:
-                        st.success(f"🎯 Extraction Confidence: {confidence}%")
-                    elif confidence >= 60:
-                        st.warning(f"⚠️ Extraction Confidence: {confidence}%")
+                    # Display results
+                    if result.get('error'):
+                        st.error(f"❌ Error: {result['error']}")
                     else:
-                        st.error(f"🔴 Extraction Confidence: {confidence}%")
-                    
-                    st.markdown("### 🔍 **Core Information**")
-                    core_fields = {
-                        "🚗 Vehicle No": result.get('vehicle_no'),
-                        "⚖️ Net Weight": result.get('net_weight'),
-                        "📅 Date": result.get('date'),
-                        "⏰ Time": result.get('time'),
-                        "🏭 Company": result.get('company_name'),
-                        "📦 Material": result.get('material')
-                    }
-                    
-                    for label, value in core_fields.items():
-                        st.write(f"**{label}:** {value if value else 'N/A'}")
+                        st.markdown("### 🔍 **Core Information**")
+                        core_fields = {
+                            "🚗 Vehicle No": result.get('vehicle_no'),
+                            "⚖️ Net Weight": result.get('net_weight'),
+                            "📅 Date": result.get('date')
+                        }
+                        
+                        for label, value in core_fields.items():
+                            st.write(f"**{label}:** {value if value else 'N/A'}")
+                        
+                        # Show raw text in expander
+                        with st.expander("📄 Raw Extracted Text"):
+                            st.text(result.get('raw_text', 'No text extracted'))
+                        
+                        # Show tabular info
+                        if result.get('tabular_rows', 0) > 0:
+                            st.info(f"📊 Tabular rows detected: {result['tabular_rows']}")
+                
+                except Exception as e:
+                    st.error(f"Processing error: {e}")
+
+if __name__ == "__main__":
+    main()
