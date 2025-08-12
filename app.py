@@ -1,6 +1,10 @@
 import streamlit as st
-import cv2
 import numpy as np
+try:
+    import cv2
+except ImportError:
+    st.error("OpenCV not available. Some preprocessing features may be limited.")
+    cv2 = None
 from doctr.io import DocumentFile
 from doctr.models import ocr_predictor
 import re
@@ -103,9 +107,18 @@ class VehicleDocumentExtractor:
     
     def preprocess_image(self, image: np.ndarray) -> np.ndarray:
         """
-        Enhanced preprocessing for weighbridge documents
+        Enhanced preprocessing for weighbridge documents (fallback for missing OpenCV)
         """
-        # Convert to grayscale if needed
+        if cv2 is None:
+            # Fallback preprocessing without OpenCV
+            if len(image.shape) == 3:
+                # Simple grayscale conversion
+                gray = np.dot(image[...,:3], [0.2989, 0.5870, 0.1140])
+            else:
+                gray = image
+            return gray.astype(np.uint8)
+        
+        # Full OpenCV preprocessing
         if len(image.shape) == 3:
             gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         else:
@@ -474,7 +487,30 @@ def main():
             st.divider()
     
     else:
-        st.info("Upload weighbridge document images to get started!")
+        st.info("👆 Upload weighbridge document images to get started!")
+        
+        # Sample format information
+        st.markdown("""
+        ### 📋 Supported Document Types:
+        - Weighbridge slips
+        - Vehicle delivery challans  
+        - Weight certificates
+        - Transport documents
+        
+        ### 💡 Tips for Better Results:
+        - **Image Quality**: Use clear, high-resolution images
+        - **Lighting**: Ensure good lighting and contrast
+        - **Orientation**: Keep documents straight and well-aligned
+        - **Format**: PNG, JPG, JPEG, TIFF, or BMP formats
+        - **Preprocessing**: Enable preprocessing for low-quality images
+        
+        ### 🎯 Extraction Accuracy:
+        The system is optimized for Indian vehicle documents and weighbridge formats, with specialized patterns for:
+        - Indian vehicle registration formats (e.g., MH31CB394, IN2SC8478)
+        - Weight measurements in kg/tons
+        - Date formats (DD-MM-YYYY, DD-MMM-YYYY)
+        - Reference and lot numbers
+        """)
 
 if __name__ == "__main__":
     main()
