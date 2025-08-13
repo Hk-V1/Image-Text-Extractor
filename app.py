@@ -1,3 +1,6 @@
+# Lightweight Weighbridge OCR API - Production Ready for Render
+# Optimized for Python 3.11+ compatibility and free tier deployment
+
 import io
 import json
 import logging
@@ -612,9 +615,10 @@ async def root():
             </div>
             
             <div class="demo-section">
-                <h2>🎯 Demo Mode - Ready for Testing!</h2>
-                <p>This is a fully functional demo API that simulates realistic weighbridge slip processing. 
-                Perfect for testing integration and demonstrating capabilities to your team.</p>
+                <h2>🧠 Powered by Qwen2.5-7B-Instruct AI</h2>
+                <p>This API uses <strong>real AI OCR processing</strong> via Qwen2.5-7B-Instruct through Hugging Face router. 
+                Upload actual weighbridge slip images to see genuine AI-powered text extraction and data parsing.</p>
+                <p><strong>Note:</strong> Requires HF_TOKEN environment variable. Falls back to demo mode if not configured.</p>
             </div>
             
             <h2>🔑 API Keys for Immediate Use</h2>
@@ -643,12 +647,15 @@ async def root():
             <h2>🚀 Quick Test Example</h2>
             <pre>curl -X POST "https://your-api-url.onrender.com/api/v1/extract" \\
      -H "X-API-Key: wb_demo_key_789" \\
-     -F "file=@weighbridge_slip.jpg"</pre>
+     -F "file=@weighbridge_slip.jpg"
+
+# Set HF_TOKEN environment variable for real AI OCR:
+export HF_TOKEN=your_huggingface_token_here</pre>
             
             <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ecf0f1; color: #7f8c8d; text-align: center;">
                 <p><strong>Weighbridge OCR API v1.0.0</strong><br>
-                Deployed on Render.com • Production Ready<br>
-                <small>Build Status: ✅ Fixed</small></p>
+                Powered by Qwen2.5-7B-Instruct • Deployed on Render.com • Production Ready<br>
+                <small>Real AI OCR processing with intelligent fallback</small></p>
             </div>
         </div>
     </body>
