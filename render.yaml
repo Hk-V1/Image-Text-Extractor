@@ -1,22 +1,13 @@
 services:
   - type: web
-    name: weighbridge-ocr-api
+    name: weighbridge-ocr-simple
     env: python
     plan: free
-    buildCommand: |
-      pip install --upgrade pip setuptools wheel &&
-      pip install --no-build-isolation --no-deps fastapi==0.104.1 &&
-      pip install --no-build-isolation --no-deps uvicorn==0.24.0 &&
-      pip install --no-build-isolation --no-deps python-multipart==0.0.6 &&
-      pip install --no-build-isolation --no-deps pydantic==2.5.2 &&
-      pip install --no-build-isolation --no-deps openai==1.51.0 &&
-      pip install --no-build-isolation typing-extensions starlette anyio sniffio idna certifi h11 httpcore httpx distro
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    buildCommand: pip install --upgrade pip && pip install -r requirements-pure-python.txt
+    startCommand: python main-simple.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.7
       - key: PORT
         generateValue: true
-      - key: PIP_NO_BUILD_ISOLATION
-        value: "1"
     healthCheckPath: /health
