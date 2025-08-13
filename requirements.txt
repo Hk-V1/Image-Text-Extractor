@@ -1,5 +1,26 @@
+# Weighbridge OCR API - Production Dependencies with Qwen2.5 Integration
+# Optimized for Python 3.13 and Render deployment
+
+# Core FastAPI and server
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
+
+# Data validation and models
 pydantic==2.5.0
-Pillow==10.0.1
+
+# Image processing (lightweight)
+Pillow==10.1.0
+
+# OpenAI client for Hugging Face router integration
+openai==1.3.0
+
+# HTTP and CORS
+starlette==0.27.0
+
+# Optional: For more robust deployments
+gunicorn==21.2.0
+
+# Development/testing (optional - comment out for production)
+# pytest==7.4.3
+# httpx==0.25.2
