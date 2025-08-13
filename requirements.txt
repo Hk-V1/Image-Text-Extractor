@@ -1,6 +1,20 @@
-# Requirements without Pillow (for testing)
+# Pure Python dependencies - NO Rust/native compilation required
+# These are guaranteed to work on any Python environment
+
+# Core web framework - pure Python
 fastapi==0.104.1
-uvicorn==0.24.0  
+
+# ASGI server - pure Python  
+uvicorn==0.24.0
+
+# File upload handling - pure Python
 python-multipart==0.0.6
-pydantic==2.5.2
-openai==1.51.0
+
+# Data validation - pure Python (avoid newer versions with Rust)
+pydantic==1.10.13
+
+# HTTP client - pure Python (older version without Rust dependencies)
+httpx==0.24.1
+
+# Basic dependencies
+typing-extensions==4.8.0
