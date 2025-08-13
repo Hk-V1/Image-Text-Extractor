@@ -1,6 +1,3 @@
-# Lightweight Weighbridge OCR API - Production Ready for Render
-# Optimized for Python 3.11+ compatibility and free tier deployment
-
 import io
 import json
 import logging
@@ -546,21 +543,26 @@ class WeighbridgeOCRSystem:
             }
     
     def _validate_image(self, file_content: bytes):
-        """Basic image validation"""
+        """Basic image validation without PIL dependency"""
         if len(file_content) == 0:
             raise ValueError("Empty file")
         
         # Check for basic image file signatures
-        if file_content[:4] == b'\xff\xd8\xff':  # JPEG
-            return True
-        elif file_content[:8] == b'\x89PNG\r\n\x1a\n':  # PNG
-            return True
-        elif file_content[:6] in [b'GIF87a', b'GIF89a']:  # GIF
-            return True
-        else:
-            # Allow anyway - might be valid image
-            logger.warning("Unknown image format, proceeding anyway")
-            return True
+        signatures = {
+            b'\xff\xd8\xff': 'JPEG',
+            b'\x89PNG\r\n\x1a\n': 'PNG', 
+            b'GIF87a': 'GIF',
+            b'GIF89a': 'GIF'
+        }
+        
+        for signature, format_name in signatures.items():
+            if file_content.startswith(signature):
+                logger.info(f"✅ Detected {format_name} image format")
+                return True
+        
+        # Allow unknown formats but warn
+        logger.warning("⚠️ Unknown image format, proceeding anyway")
+        return True
 
 # Initialize the system
 ocr_system = WeighbridgeOCRSystem()
